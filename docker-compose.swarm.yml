@@ -1,0 +1,144 @@
+services:
+  db:
+    image: postgres:16-alpine
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      placement:
+        constraints:
+          - node.role == manager
+    environment:
+      POSTGRES_DB: maildb
+      POSTGRES_USER: mailuser
+      POSTGRES_PASSWORD: password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - mailnet
+
+  mailserver:
+    image: ghcr.io/docker-mailserver/docker-mailserver:latest
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 5
+      placement:
+        constraints:
+          - node.role == manager
+    hostname: mail.course.local
+    domainname: course.local
+    ports:
+      - target: 25
+        published: 25
+        protocol: tcp
+        mode: host
+      - target: 587
+        published: 587
+        protocol: tcp
+        mode: host
+      - target: 465
+        published: 465
+        protocol: tcp
+        mode: host
+      - target: 993
+        published: 993
+        protocol: tcp
+        mode: host
+      - target: 143
+        published: 143
+        protocol: tcp
+        mode: host
+    environment:
+      SSL_TYPE: self-signed
+      ONE_DIR: 1
+      PERMIT_DOCKER: network
+      ENABLE_RSPAMD: 1
+      ENABLE_FAIL2BAN: 1
+      POSTMASTER_ADDRESS: postmaster@course.local
+      SMTP_ONLY: 0
+    volumes:
+      - maildata:/var/mail
+      - mailstate:/var/mail-state
+      - ./dms-config:/tmp/docker-mailserver
+      - ./dms-config/ssl:/etc/dms/tls
+    networks:
+      - mailnet
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - target: 80
+        published: 8080
+        protocol: tcp
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - mailnet
+
+  rainloop:
+    image: hardware/rainloop:latest
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    ports:
+      - target: 8888
+        published: 8888
+        protocol: tcp
+    environment:
+      - APACHE_HTTP_PORT=80
+    volumes:
+      - rainloop_data:/rainloop/data
+    networks:
+      - mailnet
+
+  portainer:
+    image: portainer/portainer-ce:latest
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+      placement:
+        constraints:
+          - node.role == manager
+    ports:
+      - target: 9000
+        published: 9000
+        protocol: tcp
+    volumes:
+      - portainer_data:/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: -H unix:///var/run/docker.sock --http-enabled
+    networks:
+      - mailnet
+
+volumes:
+  postgres_data:
+    driver: local
+  maildata:
+    driver: local
+  mailstate:
+    driver: local
+  pgadmin_data:
+    driver: local
+  rainloop_data:
+    driver: local
+  portainer_data:
+    driver: local
+
+networks:
+  mailnet:
+    driver: overlay
+    attachable: true

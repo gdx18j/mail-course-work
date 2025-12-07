@@ -1,0 +1,54 @@
+http://localhost:8080
+Логин: admin@example.com
+Пароль: admin
+
+красивый вывод контейнеров
+docker compose ps --format "table {{.Name}}\t{{.Image}}\t{{.Status}}"
+остановить все
+docker compose down
+
+Host name/address: mail-db
+Port: 5432
+Maintenance database: maildb
+Username: mailuser
+Password: password
+Save password?: ✓
+
+создать пользователя:
+docker exec -it mail-server setup email add user@course.local
+1. name: user@course.local
+   password: 1234
+2. name
+   password: 
+
+Доступ к сервисам:
+Вкладка Connection:
+Host name/address: db (имя контейнера из docker-compose)
+
+Port: 5432
+
+Maintenance database: maildb
+
+Username: mailuser
+
+Password: password
+
+Save password: ☑ Отметьте галочку
+
+
+Сервис	URL / Адрес	Порт	Назначение	Логин/Пароль
+Rainloop (Веб-почта)	http://localhost:8888	8888	Веб-интерфейс для почты	user@course.local / 1234 ## админка http://localhost:8888/?admin: admin / 12345
+PgAdmin (Управление БД)	http://localhost:8080	8080	Управление PostgreSQL	admin@example.com / admin
+Portainer (Администрирование)	http://localhost:9000	9000	Управление Docker admin / 123412341234	
+Почтовый сервер	Разные протоколы	См. ниже	SMTP/IMAP сервер	user@course.local / 1234
+PostgreSQL (БД)	Внутренняя сеть	5432	База данных	mailuser / password
+
+------SWARM------
+Развернуть стек в Swarm
+docker stack deploy -c docker-compose.swarm.yml mailcourse
+
+проверить статус: 
+docker stack ps mailcourse // docker stack ps mailcourse --format "table {{.Name}}\t{{.Image}}\t{{.CurrentState}}\t{{.Node}}"
+
+docker service ls
+

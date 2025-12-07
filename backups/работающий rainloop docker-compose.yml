@@ -1,0 +1,117 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: mail-db
+    restart: always
+    environment:
+      POSTGRES_DB: maildb
+      POSTGRES_USER: mailuser
+      POSTGRES_PASSWORD: password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - mailnet
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U mailuser -d maildb" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  mailserver:
+    image: ghcr.io/docker-mailserver/docker-mailserver:latest
+    container_name: mail-server
+    hostname: mail.course.local
+    domainname: course.local
+    restart: always
+    ports:
+      - "25:25"
+      - "587:587"
+      - "465:465"
+      - "993:993"
+      - "143:143"
+    environment:
+      SSL_TYPE: self-signed
+      ONE_DIR: 1
+      PERMIT_DOCKER: network
+      ENABLE_RSPAMD: 0
+      ENABLE_FAIL2BAN: 0
+      POSTMASTER_ADDRESS: postmaster@course.local
+      SMTP_ONLY: 0
+    volumes:
+      - maildata:/var/mail
+      - mailstate:/var/mail-state
+      - ./dms-config:/tmp/docker-mailserver
+      - ./dms-config/ssl:/etc/dms/tls
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - mailnet
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pgadmin
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "8080:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - mailnet
+    depends_on:
+      - db
+
+  rainloop:
+    image: hardware/rainloop:latest
+    container_name: rainloop
+    restart: always
+    ports:
+      - "8888:8888"
+    environment:
+      - APACHE_HTTP_PORT=80
+    volumes:
+      - rainloop_data:/rainloop/data
+    networks:
+      - mailnet
+    depends_on:
+      - mailserver
+
+  traefik:
+    image: traefik:v3.0
+    container_name: traefik
+    restart: always
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      # Отключаем Let's Encrypt для локальной разработки
+      # или используем самоподписанные сертификаты
+      - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
+      - "--certificatesresolvers.myresolver.acme.email=admin@course.local"
+      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+      # Для локальной разработки можно использовать staging
+      # - "--certificatesresolvers.myresolver.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - traefik_data:/letsencrypt
+    networks:
+      - mailnet
+
+volumes:
+  postgres_data:
+  maildata:
+  mailstate:
+  pgadmin_data:
+  rainloop_data:
+  traefik_data:
+
+networks:
+  mailnet:
+    driver: bridge

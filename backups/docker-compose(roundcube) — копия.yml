@@ -1,0 +1,114 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: mail-db
+    restart: always
+    environment:
+      POSTGRES_DB: maildb
+      POSTGRES_USER: mailuser
+      POSTGRES_PASSWORD: password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - mailnet
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mailuser -d maildb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  mailserver:
+    image: ghcr.io/docker-mailserver/docker-mailserver:latest
+    container_name: mail-server
+    hostname: mail
+    domainname: course.local
+    restart: always
+    ports:
+      - "25:25"
+      - "587:587"
+      - "465:465"
+      - "993:993"
+    environment:
+      SSL_TYPE: manual
+      SSL_CERT_PATH: /tmp/docker-mailserver/ssl/mail.course.local-cert.pem
+      SSL_KEY_PATH: /tmp/docker-mailserver/ssl/mail.course.local-key.pem
+      ONE_DIR: 1
+      PERMIT_DOCKER: network
+      ENABLE_RSPAMD: 0
+      ENABLE_FAIL2BAN: 0
+      DBDRIVER: pgsql
+      POSTGRES_PORT: 5432
+      POSTGRES_HOST: db
+      POSTGRES_DB: maildb
+      POSTGRES_USER: mailuser
+      POSTGRES_PASSWORD: password
+    volumes:
+      - maildata:/var/mail
+      - mailstate:/var/mail-state
+      - ./dms-config:/tmp/docker-mailserver
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - mailnet
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pgadmin
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "8080:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - mailnet
+  rainloop:
+    image: hardware/rainloop:latest
+    container_name: rainloop
+    restart: always
+    ports:
+      - "8081:80"
+    volumes:
+      - rainloop_data:/var/www/html/data  # для persistence конфигов и сессий
+    depends_on:
+      - mailserver
+      - db
+    networks:
+      - mailnet
+      
+  traefik:
+    image: traefik:v3.0
+    container_name: traefik
+    restart: always
+    command:
+      - "--providers.docker=true"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.letsencrypt.acme.email=tvoy@email.ru"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/acme.json"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - traefik_data:/acme.json
+    networks:
+      - mailnet
+    
+    
+volumes:
+  postgres_data:
+  maildata:
+  mailstate:
+  traefik_data:
+  pgadmin_data:
+  rainloop_data:
+networks:
+  mailnet:
+    driver: bridge

@@ -1,0 +1,3 @@
+mail._domainkey	IN	TXT	( "v=DKIM1; h=sha256; k=rsa; "
+	  "p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtTse76fcdtyX47mFNDJ1ulgxA7aineHcuLeqRyyfcH66+R8UQbqWnHzIq9rKeZ6owRTaxnoFsXMGH4bmwTxzV2ma0tyQCg1ZZRKKlRNK+15eNPfoGFDiwLJ+q8gYq5UwyE05NzAzBw6nVsFThCBrnc3g8krsg1QomoLDcfqcrO5C1gIKjVcGzUzxg+DdwJ3AXuu+uMTldEMI2U"
+	  "2LBGRdpn2kg5I1SGxllnqFZgfJ7RW2MfLByOI37He48x3bHSu7tIzH2nzmRbxO2WLEoaaIQHF4Yjy5xiyKZk+1IBbc1rBHon5hKwquCPenG3FQwGcpmmvrxy3n/ezq8c8KOV1I+wIDAQAB" )  ; ----- DKIM key mail for course.local
