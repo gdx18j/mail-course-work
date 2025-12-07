@@ -6,4 +6,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo "CI/CD работает"
-      - run: echo "Время: $(date)"
+      - run: echo "Время - $(date)"
