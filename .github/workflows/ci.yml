@@ -12,17 +12,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
-      - name: Check required files
-        run: |
-          echo "Проверяем наличие необходимых файлов:"
-          ls -la
-          echo "---"
-          if [ ! -f "swarm.yml" ]; then
-            echo "Ошибка: файл swarm.yml не найден!"
-            exit 1
-          fi
-          echo "Файл swarm.yml найден"
           
       - name: Validate Docker Compose structure
         run: |
@@ -46,7 +35,6 @@ jobs:
           print(f'   - Сети: {len(data.get(\"networks\", {}))} шт.')
           "
           
-      # 5. Показать информацию о сервисах (для отладки)
       - name: Show services info
         run: |
           echo "Информация о сервисах в swarm.yml:"
@@ -69,9 +57,8 @@ jobs:
           "
         
             
-      # 7. Запасной шаг - показать команды для ручного деплоя
       - name: Manual deployment instructions
-        if: ${{ true }}  # Всегда показываем
+        if: ${{ true }}
         run: |
           echo "================================================"
           echo "ИНСТРУКЦИЯ ДЛЯ РУЧНОГО РАЗВЁРТЫВАНИЯ:"
