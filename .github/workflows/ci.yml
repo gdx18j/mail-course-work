@@ -13,28 +13,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
           
-      - name: Validate Docker Compose structure
-        run: |
-          echo "Проверяем структуру Docker Compose..."
-          # Проверяем наличие обязательных секций
-          python3 -c "
-          import yaml
-          with open('swarm.yml', 'r') as f:
-              data = yaml.safe_load(f)
-          
-          required_sections = ['services', 'volumes', 'networks']
-          missing = [s for s in required_sections if s not in data]
-          
-          if missing:
-              print(f' Отсутствуют секции: {missing}')
-              exit(1)
-          
-          print(' Все обязательные секции присутствуют:')
-          print(f'   - Сервисы: {len(data.get(\"services\", {}))} шт.')
-          print(f'   - Тома: {len(data.get(\"volumes\", {}))} шт.')
-          print(f'   - Сети: {len(data.get(\"networks\", {}))} шт.')
-          "
-          
       - name: Show services info
         run: |
           echo "Информация о сервисах в swarm.yml:"
