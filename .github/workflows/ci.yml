@@ -12,29 +12,7 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-          
-      - name: Show services info
-        run: |
-          echo "Информация о сервисах в swarm.yml:"
-          python3 -c "
-          import yaml
-          with open('swarm.yml', 'r') as f:
-              data = yaml.safe_load(f)
-          
-          services = data.get('services', {})
-          print(f'Всего сервисов: {len(services)}')
-          print('---')
-          for service_name, service_config in services.items():
-              image = service_config.get('image', 'не указан')
-              ports = service_config.get('ports', [])
-              print(f'  {service_name}:')
-              print(f'   Образ: {image}')
-              if ports:
-                  print(f'   Публичные порты: {ports}')
-              print()
-          "
-        
-            
+                      
       - name: Manual deployment instructions
         if: ${{ true }}
         run: |
