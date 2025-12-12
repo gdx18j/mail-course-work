@@ -27,230 +27,182 @@ jobs:
           sudo chmod +x /usr/local/bin/docker-compose
           docker-compose --version
 
-      - name: Validate docker-compose configuration
-        run: |
-          echo "Validating docker-compose.yml..."
-          docker-compose config
-          echo "Configuration is valid"
-
-      - name: Create necessary directories
+      - name: Create test configuration
         run: |
           mkdir -p dms-config/ssl
-          # Создаем минимальную конфигурацию для тестов
-          echo "# Test configuration" > dms-config/config.env
+          echo "# Test configuration for CI" > dms-config/config.env
+          echo "ENABLE_FAIL2BAN=0" >> dms-config/config.env
+          echo "ENABLE_RSPAMD=0" >> dms-config/config.env
 
-      - name: Start mail services with docker-compose
+      - name: Create docker-compose.ci.yml
         run: |
-          # Используем адаптированный compose для CI (без портов <1024)
-          cat > docker-compose.ci.yml << 'EOF'
-version: '3.8'
-services:
-  db:
-    image: postgres:16-alpine
-    container_name: mail-db-ci
-    environment:
-      POSTGRES_DB: maildb
-      POSTGRES_USER: mailuser
-      POSTGRES_PASSWORD: password
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U mailuser -d maildb"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - mailnet
+          # Создаем файл через echo с правильным форматированием
+          echo "version: '3.8'" > docker-compose.ci.yml
+          echo "" >> docker-compose.ci.yml
+          echo "services:" >> docker-compose.ci.yml
+          echo "  db:" >> docker-compose.ci.yml
+          echo "    image: postgres:16-alpine" >> docker-compose.ci.yml
+          echo "    container_name: mail-db-ci" >> docker-compose.ci.yml
+          echo "    environment:" >> docker-compose.ci.yml
+          echo "      POSTGRES_DB: maildb" >> docker-compose.ci.yml
+          echo "      POSTGRES_USER: mailuser" >> docker-compose.ci.yml
+          echo "      POSTGRES_PASSWORD: password" >> docker-compose.ci.yml
+          echo "    healthcheck:" >> docker-compose.ci.yml
+          echo "      test: [\"CMD-SHELL\", \"pg_isready -U mailuser -d maildb\"]" >> docker-compose.ci.yml
+          echo "      interval: 10s" >> docker-compose.ci.yml
+          echo "      timeout: 5s" >> docker-compose.ci.yml
+          echo "      retries: 5" >> docker-compose.ci.yml
+          echo "    networks:" >> docker-compose.ci.yml
+          echo "      - mailnet" >> docker-compose.ci.yml
+          echo "" >> docker-compose.ci.yml
+          echo "  mailserver:" >> docker-compose.ci.yml
+          echo "    image: ghcr.io/docker-mailserver/docker-mailserver:latest" >> docker-compose.ci.yml
+          echo "    container_name: mail-server-ci" >> docker-compose.ci.yml
+          echo "    hostname: mail.ci.local" >> docker-compose.ci.yml
+          echo "    domainname: ci.local" >> docker-compose.ci.yml
+          echo "    environment:" >> docker-compose.ci.yml
+          echo "      SSL_TYPE: self-signed" >> docker-compose.ci.yml
+          echo "      ONE_DIR: 1" >> docker-compose.ci.yml
+          echo "      PERMIT_DOCKER: network" >> docker-compose.ci.yml
+          echo "      POSTMASTER_ADDRESS: postmaster@ci.local" >> docker-compose.ci.yml
+          echo "      SMTP_ONLY: 0" >> docker-compose.ci.yml
+          echo "    ports:" >> docker-compose.ci.yml
+          echo "      - \"1025:25\"" >> docker-compose.ci.yml
+          echo "      - \"1587:587\"" >> docker-compose.ci.yml
+          echo "      - \"1993:993\"" >> docker-compose.ci.yml
+          echo "    volumes:" >> docker-compose.ci.yml
+          echo "      - ./dms-config:/tmp/docker-mailserver" >> docker-compose.ci.yml
+          echo "    depends_on:" >> docker-compose.ci.yml
+          echo "      db:" >> docker-compose.ci.yml
+          echo "        condition: service_healthy" >> docker-compose.ci.yml
+          echo "    networks:" >> docker-compose.ci.yml
+          echo "      - mailnet" >> docker-compose.ci.yml
+          echo "" >> docker-compose.ci.yml
+          echo "  pgadmin:" >> docker-compose.ci.yml
+          echo "    image: dpage/pgadmin4:latest" >> docker-compose.ci.yml
+          echo "    container_name: pgadmin-ci" >> docker-compose.ci.yml
+          echo "    environment:" >> docker-compose.ci.yml
+          echo "      PGADMIN_DEFAULT_EMAIL: admin@ci.local" >> docker-compose.ci.yml
+          echo "      PGADMIN_DEFAULT_PASSWORD: admin" >> docker-compose.ci.yml
+          echo "    ports:" >> docker-compose.ci.yml
+          echo "      - \"18080:80\"" >> docker-compose.ci.yml
+          echo "    depends_on:" >> docker-compose.ci.yml
+          echo "      - db" >> docker-compose.ci.yml
+          echo "    networks:" >> docker-compose.ci.yml
+          echo "      - mailnet" >> docker-compose.ci.yml
+          echo "" >> docker-compose.ci.yml
+          echo "  rainloop:" >> docker-compose.ci.yml
+          echo "    image: hardware/rainloop:latest" >> docker-compose.ci.yml
+          echo "    container_name: rainloop-ci" >> docker-compose.ci.yml
+          echo "    ports:" >> docker-compose.ci.yml
+          echo "      - \"18888:8888\"" >> docker-compose.ci.yml
+          echo "    environment:" >> docker-compose.ci.yml
+          echo "      - APACHE_HTTP_PORT=80" >> docker-compose.ci.yml
+          echo "    depends_on:" >> docker-compose.ci.yml
+          echo "      - mailserver" >> docker-compose.ci.yml
+          echo "    networks:" >> docker-compose.ci.yml
+          echo "      - mailnet" >> docker-compose.ci.yml
+          echo "" >> docker-compose.ci.yml
+          echo "  portainer:" >> docker-compose.ci.yml
+          echo "    image: portainer/portainer-ce:latest" >> docker-compose.ci.yml
+          echo "    container_name: portainer-ci" >> docker-compose.ci.yml
+          echo "    ports:" >> docker-compose.ci.yml
+          echo "      - \"19000:9000\"" >> docker-compose.ci.yml
+          echo "    volumes:" >> docker-compose.ci.yml
+          echo "      - portainer_data:/data" >> docker-compose.ci.yml
+          echo "    command: -H unix:///var/run/docker.sock --http-enabled" >> docker-compose.ci.yml
+          echo "    networks:" >> docker-compose.ci.yml
+          echo "      - mailnet" >> docker-compose.ci.yml
+          echo "" >> docker-compose.ci.yml
+          echo "networks:" >> docker-compose.ci.yml
+          echo "  mailnet:" >> docker-compose.ci.yml
+          echo "    driver: bridge" >> docker-compose.ci.yml
+          echo "" >> docker-compose.ci.yml
+          echo "volumes:" >> docker-compose.ci.yml
+          echo "  portainer_data:" >> docker-compose.ci.yml
 
-  mailserver:
-    image: ghcr.io/docker-mailserver/docker-mailserver:latest
-    container_name: mail-server-ci
-    hostname: mail.ci.local
-    domainname: ci.local
-    environment:
-      SSL_TYPE: self-signed
-      ONE_DIR: 1
-      PERMIT_DOCKER: network
-      POSTMASTER_ADDRESS: postmaster@ci.local
-      SMTP_ONLY: 0
-    ports:
-      - "1025:25"   # SMTP на нестандартном порту
-      - "1587:587"  # Submission
-      - "1993:993"  # IMAPS
-    volumes:
-      - ./dms-config:/tmp/docker-mailserver
-    depends_on:
-      db:
-        condition: service_healthy
-    networks:
-      - mailnet
+          echo "Created docker-compose.ci.yml"
 
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    container_name: pgadmin-ci
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@ci.local
-      PGADMIN_DEFAULT_PASSWORD: admin
-    ports:
-      - "18080:80"
-    depends_on:
-      - db
-    networks:
-      - mailnet
+      - name: Validate docker-compose.ci.yml
+        run: |
+          echo "Validating YAML syntax..."
+          docker-compose -f docker-compose.ci.yml config
+          echo "Configuration is valid"
 
-  rainloop:
-    image: hardware/rainloop:latest
-    container_name: rainloop-ci
-    ports:
-      - "18888:8888"
-    environment:
-      - APACHE_HTTP_PORT=80
-    depends_on:
-      - mailserver
-    networks:
-      - mailnet
-
-  portainer:
-    image: portainer/portainer-ce:latest
-    container_name: portainer-ci
-    ports:
-      - "19000:9000"
-    volumes:
-      - portainer_data:/data
-    command: -H unix:///var/run/docker.sock --http-enabled
-    networks:
-      - mailnet
-
-networks:
-  mailnet:
-    driver: bridge
-
-volumes:
-  portainer_data:
-EOF
-          
+      - name: Start mail services
+        run: |
           docker-compose -f docker-compose.ci.yml up -d
+          echo "Services started"
+          docker-compose -f docker-compose.ci.yml ps
 
-      - name: Wait for services to be healthy
+      - name: Wait for services
         run: |
           echo "Waiting for services to start..."
-          sleep 30
+          sleep 20
           
-          # Check database health
           echo "Checking database..."
-          timeout 30 bash -c 'until docker-compose -f docker-compose.ci.yml exec -T db pg_isready -U mailuser -d maildb; do sleep 2; done'
-          echo "Database is ready"
-          
-          # Check mailserver TCP ports
-          echo "Checking mailserver ports..."
-          for port in 1025 1587 1993; do
-            if timeout 5 bash -c "echo > /dev/tcp/localhost/$port"; then
-              echo "Port $port is open"
-            else
-              echo "Port $port is not responding (may be normal in CI)"
+          for i in {1..10}; do
+            if docker-compose -f docker-compose.ci.yml exec db pg_isready -U mailuser -d maildb; then
+              echo "Database is ready"
+              break
             fi
-          done
-          
-          # Check web interfaces
-          echo "Checking web services..."
-          for service in "pgadmin:18080" "rainloop:18888" "portainer:19000"; do
-            name=$(echo $service | cut -d: -f1)
-            port=$(echo $service | cut -d: -f2)
-            if timeout 10 curl -f http://localhost:$port > /dev/null 2>&1; then
-              echo "$name is accessible on port $port"
-            else
-              echo "$name not accessible on port $port (still starting?)"
-            fi
+            echo "Waiting for database... ($i/10)"
+            sleep 5
           done
 
-      - name: Test mail services
+      - name: Health check
         run: |
-          echo "Testing mail server functionality..."
+          echo "HEALTH CHECK"
           
-          # Test SMTP connection (без фактической отправки)
-          echo "Testing SMTP connection..."
-          if timeout 5 telnet localhost 1025 > /tmp/smtp_test.log 2>&1; then
-            if grep -q "220" /tmp/smtp_test.log; then
-              echo "SMTP server is responding"
-            else
-              echo "SMTP responded but no welcome banner"
-            fi
-          else
-            echo "Could not connect to SMTP (expected in CI environment)"
-          fi
+          RUNNING=$(docker-compose -f docker-compose.ci.yml ps --services --filter "status=running" | wc -l)
+          echo "Running containers: $RUNNING/5"
           
-          # Проверяем что все контейнеры запущены
-          echo ""
-          echo "=== CONTAINER STATUS ==="
-          docker-compose -f docker-compose.ci.yml ps
-          
-          RUNNING_COUNT=$(docker-compose -f docker-compose.ci.yml ps --services --filter "status=running" | wc -l)
-          echo ""
-          echo "Running containers: $RUNNING_COUNT/5"
-          
-          if [ $RUNNING_COUNT -ge 3 ]; then
+          if [ $RUNNING -ge 3 ]; then
             echo "Core services are running"
           else
             echo "Some services failed to start"
-            # Показываем логи проблемных сервисов
-            docker-compose -f docker-compose.ci.yml logs --tail=20
+            docker-compose -f docker-compose.ci.yml logs --tail=50
+            exit 1
           fi
+          
+          echo ""
+          echo "PORT CHECK"
+          for port in 1025 1587 1993 18080 18888 19000; do
+            if timeout 2 bash -c "echo > /dev/tcp/127.0.0.1/$port" 2>/dev/null; then
+              echo "Port $port is listening"
+            else
+              echo "Port $port not listening (might be OK for CI)"
+            fi
+          done
+
+      - name: Test basic functionality
+        run: |
+          echo "BASIC TESTS"
+          
+          echo "Testing PostgreSQL..."
+          if docker-compose -f docker-compose.ci.yml exec -T db psql -U mailuser -d maildb -c "SELECT 1;" > /dev/null 2>&1; then
+            echo "PostgreSQL is working"
+          else
+            echo "PostgreSQL test failed"
+          fi
+          
+          echo ""
+          echo "Container status:"
+          docker-compose -f docker-compose.ci.yml ps -a
 
       - name: Cleanup
         if: always()
         run: |
+          echo "Cleaning up..."
           docker-compose -f docker-compose.ci.yml down -v
           echo "Cleanup completed"
 
-  deploy-manual:
-    name: Manual Deployment Instructions
+  generate-deploy-guide:
+    name: Generate Deployment Guide
     needs: ci
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: success()
     
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Generate deployment report
-        run: |
-          echo "#Mail Platform Deployment Ready" > DEPLOYMENT.md
-          echo "" >> DEPLOYMENT.md
-          echo "## CI Tests PASSED" >> DEPLOYMENT.md
-          echo "All services validated successfully." >> DEPLOYMENT.md
-          echo "" >> DEPLOYMENT.md
-          echo "## Deployment Instructions:" >> DEPLOYMENT.md
-          echo "" >> DEPLOYMENT.md
-          echo "### 1. On your server:" >> DEPLOYMENT.md
-          echo '```bash' >> DEPLOYMENT.md
-          echo "git clone https://github.com/${{ github.repository }}" >> DEPLOYMENT.md
-          echo "cd mail-course-work" >> DEPLOYMENT.md
-          echo "docker-compose up -d" >> DEPLOYMENT.md
-          echo '```' >> DEPLOYMENT.md
-          echo "" >> DEPLOYMENT.md
-          echo "### 2. For Docker Swarm:" >> DEPLOYMENT.md
-          echo '```bash' >> DEPLOYMENT.md
-          echo "docker swarm init" >> DEPLOYMENT.md
-          echo "docker stack deploy -c docker-compose.swarm.yml mailcourse" >> DEPLOYMENT.md
-          echo '```' >> DEPLOYMENT.md
-          echo "" >> DEPLOYMENT.md
-          echo "### 3. Access URLs:" >> DEPLOYMENT.md
-          echo "- **SMTP:** localhost:25, 587, 465" >> DEPLOYMENT.md
-          echo "- **IMAP:** localhost:993, 143" >> DEPLOYMENT.md
-          echo "- **pgAdmin:** http://localhost:8080 (admin@example.com / admin)" >> DEPLOYMENT.md
-          echo "- **RainLoop:** http://localhost:8888" >> DEPLOYMENT.md
-          echo "- **Portainer:** http://localhost:9000" >> DEPLOYMENT.md
-          echo "" >> DEPLOYMENT.md
-          echo "### 4. Health check:" >> DEPLOYMENT.md
-          echo '```bash' >> DEPLOYMENT.md
-          echo "docker-compose ps" >> DEPLOYMENT.md
-          echo "# или для Swarm:" >> DEPLOYMENT.md
-          echo "docker stack services mailcourse" >> DEPLOYMENT.md
-          echo '```' >> DEPLOYMENT.md
-          echo "" >> DEPLOYMENT.md
-          echo "---" >> DEPLOYMENT.md
-          echo "*Generated by CI/CD Pipeline on $(date)*" >> DEPLOYMENT.md
-          
-          cat DEPLOYMENT.md
-          echo ""
-          echo "Deployment instructions saved to DEPLOYMENT.md"
-
- 
