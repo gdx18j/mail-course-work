@@ -1,39 +1,77 @@
-name: CI/CD for Mail Platform
+name: Email Platform CI/CD
 
-on:
-  push:
-    branches: [ main ]
-  workflow_dispatch:
+on: [push, workflow_dispatch]
 
 jobs:
-  validate-and-deploy:
+  ci-cd-pipeline:
     runs-on: ubuntu-latest
     
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-                      
-      - name: Manual deployment instructions
-        if: ${{ true }}
-        run: |
-          echo "================================================"
-          echo "ИНСТРУКЦИЯ ДЛЯ РУЧНОГО РАЗВЁРТЫВАНИЯ:"
-          echo "================================================"
-          echo ""
-          echo "1. Скопируйте swarm.yml на сервер:"
-          echo "   scp swarm.yml user@ваш-сервер:/opt/mail-course/"
-          echo ""
-          echo "2. Подключитесь к серверу по SSH:"
-          echo "   ssh user@ваш-сервер"
-          echo ""
-          echo "3. Перейдите в директорию проекта:"
-          echo "   cd /opt/mail-course"
-          echo ""
-          echo "4. Инициализируйте Docker Swarm (если ещё не сделано):"
-          echo "   docker swarm init"
-          echo ""
-          echo "5. Разверните стек:"
-          echo "   docker stack deploy -c swarm.yml mailcourse"
-          echo ""
-          echo "6. Проверьте статус:"
-          echo "   docker stack services mailcourse"
+    # чекаут кода
+    - name: 📥 Checkout code
+      uses: actions/checkout@v3
+    
+    # валидация
+    - name: 🔍 Validate configuration
+      run: |
+        echo "Checking files..."
+        [ -f swarm.yml ] && echo "✅ swarm.yml found" || exit 1
+        docker-compose -f swarm.yml config && echo "✅ Config is valid"
+    
+    # инструкции для ручного деплоя
+    - name: 📋 Manual deployment guide
+      if: always()
+      run: |
+        echo "=== ДЕПЛОЙ ИНСТРУКЦИЯ ==="
+        echo "1. На сервере: git clone https://github.com/${{ github.repository }}"
+        echo "2. cd mail-course-work"
+        echo "3. docker swarm init"
+        echo "4. docker stack deploy -c swarm.yml mailcourse"
+        echo ""
+        echo "Порты:"
+        echo "- Mail: 25,587,465,993,143"
+        echo "- pgAdmin: 8080"
+        echo "- RainLoop: 8888"
+        echo "- Portainer: 9000"
+    
+    # автоматический деплой
+    - name: Auto-deploy simulation
+      if: github.event_name == 'workflow_dispatch'
+      run: |
+        echo "Starting auto-deploy simulation..."
+        
+        # Устанавливаем Docker (для демо в GitHub Actions)
+        curl -fsSL https://get.docker.com -o get-docker.sh
+        sh get-docker.sh
+        
+        # Имитация Swarm деплоя
+        echo " Docker installed"
+        echo " Services would be deployed:"
+        echo "   - PostgreSQL (db)"
+        echo "   - Mail Server (mailserver)"
+        echo "   - pgAdmin"
+        echo "   - RainLoop"
+        echo "   - Portainer"
+        echo ""
+        echo " Network: mailnet (overlay)"
+        echo " For real deployment, add server secrets"
+    
+    # проверка служб
+    - name:  Health check simulation
+      if: github.event_name == 'workflow_dispatch'
+      run: |
+        echo "=== ПРОВЕРКА СЛУЖБ ==="
+        echo ""
+        
+        # Проверяем конфигурацию сервисов
+        echo " Services in swarm.yml:"
+        grep -E '^  [a-z]+:' swarm.yml | sed 's/://g' | sed 's/^/   • /'
+        
+        echo ""
+        echo "   Expected status:"
+        echo "   All 5 services should be 'Running'"
+        echo "   All replicas: 1/1"
+        echo "   Network: mailnet created"
+        echo ""
+        echo " Health check completed"
+        echo " Real check: docker stack services mailcourse"
