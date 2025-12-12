@@ -33,7 +33,7 @@ jobs:
     - name: Manual deployment guide
       if: always()
       run: |
-        echo "=== DEPLOYMENT INSTRUCTIONS ==="
+        echo "---DEPLOYMENT INSTRUCTIONS---"
         echo "1. On server: git clone https://github.com/${{ github.repository }}"
         echo "2. cd mail-course-work"
         echo "3. docker swarm init"
@@ -69,7 +69,7 @@ jobs:
     - name: Health check simulation
       if: github.event_name == 'workflow_dispatch'
       run: |
-        echo "=== SERVICE CHECK ==="
+        echo "---SERVICE CHECK---"
         echo ""
         
         # Check service configuration
