@@ -7,71 +7,72 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    # чекаут кода
+    # 1. Checkout code
     - name: Checkout code
       uses: actions/checkout@v3
     
-    # валидация
-    - name: 🔍 Validate configuration
+    # 2. Validate configuration
+    - name: Validate configuration
       run: |
         echo "Checking files..."
-        [ -f swarm.yml ] && echo " swarm.yml found" || exit 1
-        docker-compose -f swarm.yml config && echo " Config is valid"
+        [ -f docker-compose.swarm.yml ] && echo "docker-compose.swarm.yml found" || exit 1
+        docker-compose -f docker-compose.swarm.yml config && echo "Config is valid"
     
-    # инструкции для ручного деплоя
-    - name: anual deployment guide
+    # 3. Manual deployment guide
+    - name: Manual deployment guide
       if: always()
       run: |
-        echo "=== ДЕПЛОЙ ИНСТРУКЦИЯ ==="
-        echo "1. На сервере: git clone https://github.com/${{ github.repository }}"
+        echo "=== DEPLOYMENT INSTRUCTIONS ==="
+        echo "1. On server: git clone https://github.com/${{ github.repository }}"
         echo "2. cd mail-course-work"
         echo "3. docker swarm init"
-        echo "4. docker stack deploy -c swarm.yml mailcourse"
+        echo "4. docker stack deploy -c docker-compose.swarm.yml mailcourse"
         echo ""
-        echo "Порты:"
+        echo "Ports:"
         echo "- Mail: 25,587,465,993,143"
         echo "- pgAdmin: 8080"
         echo "- RainLoop: 8888"
         echo "- Portainer: 9000"
     
-    # автоматический деплой
+    # 4. Auto-deploy simulation
     - name: Auto-deploy simulation
       if: github.event_name == 'workflow_dispatch'
       run: |
         echo "Starting auto-deploy simulation..."
         
-        # Устанавливаем Docker (для демо в GitHub Actions)
+        # Install Docker (for demo in GitHub Actions)
         curl -fsSL https://get.docker.com -o get-docker.sh
         sh get-docker.sh
         
-        # Имитация Swarm деплоя
-        echo " Docker installed"
-        echo " Services would be deployed:"
+        # Simulate Swarm deployment
+        echo "Docker installed"
+        echo "Services would be deployed:"
         echo "   - PostgreSQL (db)"
         echo "   - Mail Server (mailserver)"
         echo "   - pgAdmin"
         echo "   - RainLoop"
         echo "   - Portainer"
         echo ""
-        echo " Network: mailnet (overlay)"
-        echo " For real deployment, add server secrets"
+        echo "Network: mailnet (overlay)"
+        echo "For real deployment, add server secrets"
     
-    # проверка служб
-    - name:  Health check simulation
+    # 5. Health check simulation
+    - name: Health check simulation
       if: github.event_name == 'workflow_dispatch'
       run: |
-        echo "=== ПРОВЕРКА СЛУЖБ ==="
+        echo "=== SERVICE CHECK ==="
         echo ""
         
-        # Проверяем конфигурацию сервисов
-        echo " Services in swarm.yml:"
-        grep -E '^  [a-z]+:' swarm.yml | sed 's/://g' | sed 's/^/   • /'
+        # Check service configuration
+        echo "Services in docker-compose.swarm.yml:"
+        grep -E '^  [a-z]+:' docker-compose.swarm.yml | sed 's/://g' | sed 's/^/   • /'
         
         echo ""
-        echo "   Expected status:"
+        echo "Expected status:"
         echo "   All 5 services should be 'Running'"
         echo "   All replicas: 1/1"
         echo "   Network: mailnet created"
         echo ""
-        echo " Health check completed"
-        echo " Real check: docker stack services mailcourse"
+        echo "Health check completed"
+        echo "Real check: docker stack services mailcourse"
+    
