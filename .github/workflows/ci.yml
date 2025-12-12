@@ -1,4 +1,4 @@
-name: Mail Platform CI/CD Pipeline
+name: Mail Platform CI/CD
 
 on:
   push:
