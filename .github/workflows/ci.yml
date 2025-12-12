@@ -8,18 +8,18 @@ jobs:
     
     steps:
     # чекаут кода
-    - name: 📥 Checkout code
+    - name: Checkout code
       uses: actions/checkout@v3
     
     # валидация
     - name: 🔍 Validate configuration
       run: |
         echo "Checking files..."
-        [ -f swarm.yml ] && echo "✅ swarm.yml found" || exit 1
-        docker-compose -f swarm.yml config && echo "✅ Config is valid"
+        [ -f swarm.yml ] && echo " swarm.yml found" || exit 1
+        docker-compose -f swarm.yml config && echo " Config is valid"
     
     # инструкции для ручного деплоя
-    - name: 📋 Manual deployment guide
+    - name: anual deployment guide
       if: always()
       run: |
         echo "=== ДЕПЛОЙ ИНСТРУКЦИЯ ==="
